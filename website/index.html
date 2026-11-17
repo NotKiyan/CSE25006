@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Climate-Aware ADR for LoRaWAN — CSE25006</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="site-wrapper">
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="site-header">
+    <div class="site-title">CSE25006 &mdash; <span>LoRaWAN ADR</span></div>
+    <button class="hamburger" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Mobile nav -->
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <ul class="nav-list">
+      <li><a href="#overview"><span class="nav-num">01</span>Overview</a></li>
+      <li><a href="#lorawan-basics"><span class="nav-num">02</span>LoRaWAN &amp; ADR Basics</a></li>
+      <li><a href="#hardware"><span class="nav-num">03</span>Hardware &amp; Range Test</a></li>
+      <li><a href="#datasets"><span class="nav-num">04</span>Datasets</a></li>
+      <li><a href="#climate"><span class="nav-num">05</span>Climate Findings</a></li>
+      <li><a href="#method"><span class="nav-num">06</span>Proposed Method</a></li>
+      <li><a href="#results"><span class="nav-num">07</span>Results</a></li>
+      <li><a href="#simulation"><span class="nav-num">08</span>Simulation</a></li>
+      <li><a href="#roadmap"><span class="nav-num">09</span>Status &amp; Roadmap</a></li>
+      <li><a href="#glossary"><span class="nav-num">10</span>Glossary</a></li>
+      <li><a href="#references"><span class="nav-num">11</span>References</a></li>
+    </ul>
+  </nav>
+
+  <!-- ============================================================
+       SIDEBAR
+       ============================================================ -->
+  <aside class="sidebar">
+    <div class="sidebar-label">Contents</div>
+    <ul class="nav-list">
+      <li><a href="#overview"><span class="nav-num">01</span>Overview</a></li>
+      <li><a href="#lorawan-basics"><span class="nav-num">02</span>LoRaWAN &amp; ADR Basics</a></li>
+      <li><a href="#hardware"><span class="nav-num">03</span>Hardware &amp; Range Test</a></li>
+      <li><a href="#datasets"><span class="nav-num">04</span>Datasets</a></li>
+      <li><a href="#climate"><span class="nav-num">05</span>Climate Findings</a></li>
+      <li><a href="#method"><span class="nav-num">06</span>Proposed Method</a></li>
+      <li><a href="#results"><span class="nav-num">07</span>Results</a></li>
+      <li><a href="#simulation"><span class="nav-num">08</span>Simulation</a></li>
+      <li><a href="#roadmap"><span class="nav-num">09</span>Status &amp; Roadmap</a></li>
+      <li><a href="#glossary"><span class="nav-num">10</span>Glossary</a></li>
+      <li><a href="#references"><span class="nav-num">11</span>References</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="#overview">&uarr; Back to top</a>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       MAIN CONTENT
+       ============================================================ -->
+  <main class="content">
+
+    <!-- ── 01 OVERVIEW ── -->
+    <section class="doc-section" id="overview">
+      <div class="section-eyebrow">01 — Overview</div>
+      <h1>Climate-Aware Adaptive Data Rate for LoRaWAN</h1>
+
+      <p>
+        The standard ADR rule uses one fixed safety margin (10 dB) for every link. That margin is
+        wasteful for steady links and too small for links that fade, and the rule cannot see the
+        packets it has already lost. This project builds an ADR controller that sizes the margin
+        of each link from that link's own measured behaviour, counts lost packets as evidence,
+        and uses climate information only where measurements show it helps.
+      </p>
+
+      <h2>The project at a glance</h2>
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="num">0.44%</div>
+          <div class="label">Packet loss with proposed controller (vs 11.65% for standard ADR)</div>
+        </div>
+        <div class="result-card">
+          <div class="num">1.8 dB</div>
+          <div class="label">SNR loss per 10 °C heat at the sensor node</div>
+        </div>
+        <div class="result-card">
+          <div class="num">6×</div>
+          <div class="label">Fewer downgrade commands than ADRmin at equal loss</div>
+        </div>
+        <div class="result-card">
+          <div class="num">380 K</div>
+          <div class="label">Real uplinks replayed over five months of UVA campus data</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Question</th><th>Answer so far</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Does heat change LoRaWAN links?</td>
+              <td>Heat at the sensor costs about 1.8 dB of SNR per 10 °C. Heat on a temperate campus did not change SNR, but it did shift the gateways' RSSI readings.</td>
+            </tr>
+            <tr>
+              <td>Does climate improve SNR forecasts?</td>
+              <td>Only for links silent for 12 hours or more. With a full history, recent SNR already carries the effect.</td>
+            </tr>
+            <tr>
+              <td>Does the new controller beat standard ADR on real data?</td>
+              <td>Yes. On five months of real uplinks it lost 0.44% of deliverable packets, against 11.65% for the standard rule, and at equal energy it lost significantly fewer packets.</td>
+            </tr>
+            <tr>
+              <td>Does it work in a large simulated network?</td>
+              <td>The simulator has been validated and the controller ported to it; the large simulation runs are in progress.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Project workflow</h2>
+      <div class="img-frame">
+        <img src="images/workflow.png" alt="Project workflow diagram" />
+        <div class="img-caption">The stages of the project. Shaded stages are complete; the simulation stage is in progress.</div>
+      </div>
+    </section>
+
+    <!-- ── 02 LORAWAN BASICS ── -->
+    <section class="doc-section" id="lorawan-basics">
+      <div class="section-eyebrow">02 — Basics</div>
+      <h1>LoRaWAN and ADR Basics</h1>
+      <p>This page explains the terms the rest of the documentation uses.</p>
+
+      <h2>How a LoRaWAN network works</h2>
+      <p>A LoRaWAN network has three parts:</p>
+      <ul>
+        <li><strong>End devices (nodes):</strong> small battery-powered sensors. They send short messages called uplinks.</li>
+        <li><strong>Gateways:</strong> receivers that forward every uplink they hear to the server. One uplink can be heard by several gateways.</li>
+        <li><strong>Network server:</strong> collects the uplinks, removes duplicates, and sends commands back to the nodes when needed (downlinks).</li>
+      </ul>
+      <p>
+        LoRa uses unlicensed radio bands, which differ by region. India uses IN865 (865–867 MHz),
+        Europe EU868, and the United States US915. Because the band is shared, each device may
+        only transmit for a limited share of the time.
+      </p>
+
+      <h2>The two settings that matter</h2>
+      <p>
+        <strong>Spreading factor (SF).</strong> LoRa can spread each bit over a longer chirp. Higher SFs
+        (SF7 up to SF12) decode weaker signals, about 2.5 dB weaker per step, but each step
+        roughly doubles the time on air.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>SF</th><th>Lowest SNR it decodes</th><th>Time on air (relative)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>SF7</td><td>−7.5 dB</td><td>1×</td></tr>
+            <tr><td>SF8</td><td>−10 dB</td><td>about 2×</td></tr>
+            <tr><td>SF9</td><td>−12.5 dB</td><td>about 4×</td></tr>
+            <tr><td>SF10</td><td>−15 dB</td><td>about 8×</td></tr>
+            <tr><td>SF11</td><td>−17.5 dB</td><td>about 16×</td></tr>
+            <tr><td>SF12</td><td>−20 dB</td><td>about 32×</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Transmit power (TP).</strong> Raising the power by 1 dB adds 1 dB of link budget but draws
+        more supply current. Longer time on air and higher power both drain the battery.
+        Longer transmissions also occupy the shared channel for longer, so packets from
+        different nodes collide more often.
+      </p>
+
+      <h2>Measuring link quality</h2>
+      <ul>
+        <li><strong>SNR (signal-to-noise ratio):</strong> how far the signal stands above the noise, in dB. This is what decides whether a packet decodes.</li>
+        <li><strong>RSSI (received signal strength):</strong> the received power, in dBm. This project found that RSSI can shift with the gateway's own temperature, so it is not used for decisions.</li>
+        <li><strong>PDR (packet delivery ratio):</strong> the share of sent packets that arrive.</li>
+        <li><strong>Frame counter:</strong> every uplink carries a counter that increases by one. A gap in the counter tells the server that packets were sent but lost.</li>
+      </ul>
+
+      <h2>Adaptive Data Rate (ADR)</h2>
+      <p>ADR is the mechanism by which the network server chooses each node's SF and power, and sends them in a <code>LinkADRReq</code> command.</p>
+      <p>The common server rule works like this:</p>
+      <ol>
+        <li>Take the highest SNR among the node's last 20 uplinks.</li>
+        <li>Subtract the SNR the current SF needs, and a fixed installation margin of 10 dB.</li>
+        <li>For every 3 dB left over, lower the SF by one step (or the power, once at SF7).</li>
+      </ol>
+      <p>Variants use the average SNR (called ADR+) or the minimum (ADRmin) instead of the highest.</p>
+
+      <h2>Why the standard rule falls short</h2>
+      <ul>
+        <li><strong>One margin for every link.</strong> A steady link needs much less than 10 dB, so it wastes energy. A fading link needs more, so it loses packets.</li>
+        <li><strong>The server never raises the SF.</strong> If a node is set too lean, it keeps losing packets until the node notices it has not heard from the server for 64 + 32 uplinks and falls back by itself.</li>
+        <li><strong>The server only sees what arrives.</strong> Packets lost at a lean setting never reach it, so the link looks healthier than it is. Any method that learns only from delivered packets has this blind spot.</li>
+        <li><strong>The environment changes.</strong> Heat, rain and foliage change link quality over hours and seasons.</li>
+      </ul>
+    </section>
+
+    <!-- ── 03 HARDWARE ── -->
+    <section class="doc-section" id="hardware">
+      <div class="section-eyebrow">03 — Hardware</div>
+      <h1>Hardware and Range Test</h1>
+      <p>
+        Alongside the public datasets, the project built its own LoRa node and gateway to test
+        real links on campus, in the Indian IN865 band.
+      </p>
+
+      <h2>Equipment</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>End node</td><td>Arduino Uno with a ThingZkit LoRaWAN shield and an external antenna, mounted in an enclosure</td></tr>
+            <tr><td>Gateway</td><td>Raspberry Pi 5 with a Waveshare LoRaWAN gateway HAT and an external antenna</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="img-frame">
+        <img src="images/node.jpg" alt="End node: Arduino Uno with ThingZkit LoRaWAN shield" />
+        <div class="img-caption">The end node: an Arduino Uno with a ThingZkit LoRaWAN shield and external antenna, in an enclosure.</div>
+      </div>
+      <div class="img-frame">
+        <img src="images/gateway.jpg" alt="Gateway: Raspberry Pi 5 with Waveshare LoRaWAN gateway HAT" />
+        <div class="img-caption">The gateway: a Raspberry Pi 5 with a Waveshare LoRaWAN gateway HAT.</div>
+      </div>
+
+      <h2>Live monitoring dashboard</h2>
+      <p>
+        Data from the deployed node is visualised in real time using Grafana. The dashboard shows
+        temperature and humidity at the node, RSSI and SNR on the uplink, the spreading factor
+        and transmit power chosen by ADR, and environmental sensor readings (pressure, gas resistance)
+        from the XIAO BME680 node.
+      </p>
+      <div class="img-frame">
+        <img src="images/grafana-dashboard.png" alt="Grafana monitoring dashboard — Polyhouse LoRaWAN" />
+        <div class="img-caption">
+          Grafana dashboard for the campus deployment. Top: node temperature and humidity.
+          Middle: RSSI and SNR (red dashed line marks the receiver threshold). Bottom: ADR state — spreading factor held at SF12, TX power at 14 dBm. The XIAO BME680 panels show pressure, temperature, humidity and gas resistance.
+        </div>
+      </div>
+
+      <h2>Range test</h2>
+      <p>
+        The range test measured the link along a straight path of about 760 m across the Amrita
+        Coimbatore campus, through a built-up area of academic blocks, roads and trees.
+      </p>
+      <div class="img-frame">
+        <img src="images/range-map.png" alt="Range test path on campus" />
+        <div class="img-caption">The range test path across campus, marked every 100 m.</div>
+      </div>
+
+      <h2>Interference from the hardware itself</h2>
+      <p>The range test showed that the hardware itself limits the link, before the environment does.</p>
+      <p>
+        <strong>Power supply noise.</strong> Powering the node from USB introduces a ripple of 50–100 mV
+        on the supply. That ripple raises the receiver's noise floor and reduced the receiver
+        sensitivity by about 14 dB, which makes the radio partly "deaf".
+      </p>
+      <p>
+        <strong>Crystal drift at SF12.</strong> At SF12 a single packet lasts about 2 seconds. During
+        that time the radio's crystal oscillator drifts slightly with temperature, which smears
+        the received signal. This added a decoding penalty of about 5 dB.
+      </p>
+
+      <h2>Why this matters for the project</h2>
+      <p>
+        Both effects change the link budget in a way a fixed margin cannot know about. The
+        power-supply effect is constant for a given setup, while crystal drift grows with SF and
+        with temperature. That is part of why the proposed controller learns each link's margin
+        from that link's own behaviour, instead of assuming one margin for every node.
+      </p>
+      <p>Lessons for the deployment:</p>
+      <ul>
+        <li>Power the node from a clean, regulated supply or a battery, not a USB port.</li>
+        <li>Prefer radios with a temperature-compensated crystal oscillator (TCXO) when long packets (SF11, SF12) are needed.</li>
+      </ul>
+    </section>
+
+    <!-- ── 04 DATASETS ── -->
+    <section class="doc-section" id="datasets">
+      <div class="section-eyebrow">04 — Data</div>
+      <h1>Datasets</h1>
+      <p>
+        The project uses four public LoRaWAN datasets. Each captures a different environment and
+        covers a different span of time. The table below summarises what each dataset provides.
+      </p>
+
+      <h2>Summary</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th><th>Environment</th><th>Band</th><th>Nodes</th>
+              <th>Duration</th><th>Key feature</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>UVA campus</td>
+              <td>Urban outdoor</td>
+              <td>US915</td>
+              <td>9</td>
+              <td>~5 months (Jan–Jun 2025)</td>
+              <td>Long-term deployment; frame counters allow loss recovery</td>
+            </tr>
+            <tr>
+              <td>Greenhouse (Antwerp)</td>
+              <td>Agricultural indoor</td>
+              <td>EU868</td>
+              <td>4</td>
+              <td>Several weeks</td>
+              <td>Temperature logged at the node; heat effect measurable</td>
+            </tr>
+            <tr>
+              <td>Indoor office (Siegen)</td>
+              <td>Indoor</td>
+              <td>EU868</td>
+              <td>1</td>
+              <td>Several days</td>
+              <td>Detailed path-loss with environmental factors</td>
+            </tr>
+            <tr>
+              <td>Urban outdoor (Medellín)</td>
+              <td>Urban outdoor</td>
+              <td>AU915</td>
+              <td>1</td>
+              <td>Several campaigns</td>
+              <td>Path-loss measurements with weather logs</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Data cleaning</h2>
+      <p>All four datasets were brought to a common format before analysis:</p>
+      <ul>
+        <li><strong>Lost uplinks restored from frame counters.</strong> When a gap appears in the frame counter sequence, the missing packets are added back as lost entries so the full transmission history is known.</li>
+        <li><strong>Duplicate uplinks removed.</strong> When the same uplink is heard by more than one gateway, the best-SNR copy is kept.</li>
+        <li><strong>Timestamps aligned.</strong> All timestamps were converted to UTC and checked for monotonicity.</li>
+        <li><strong>Outliers flagged.</strong> SNR values more than five standard deviations from the node's rolling mean were flagged and excluded from training.</li>
+      </ul>
+
+      <h2>Why these four datasets?</h2>
+      <p>
+        Each dataset provides a different kind of evidence. The UVA campus dataset is long enough to
+        train and test a forecaster with a proper chronological split. The greenhouse dataset is the
+        only one with node temperature logged alongside the link, which is what makes the heat analysis
+        possible. The indoor and Medellín datasets provide path-loss diversity and check that the
+        cleaning pipeline generalises.
+      </p>
+    </section>
+
+    <!-- ── 05 CLIMATE ── -->
+    <section class="doc-section" id="climate">
+      <div class="section-eyebrow">05 — Climate</div>
+      <h1>Climate Findings</h1>
+      <p>
+        Temperature affects LoRaWAN links in two places: at the node's radio hardware and at the gateway.
+        The findings from the two sites are different, and both matter for how the controller is designed.
+      </p>
+
+      <h2>Heat at the node (greenhouse site)</h2>
+      <p>
+        In the Antwerp greenhouse, the node sits inside a warm, humid space. As the air temperature
+        rises, the node's SNR falls. A linear regression on the greenhouse links gives:
+      </p>
+      <p><strong>SNR loss ≈ 1.8 dB per 10 °C rise in node temperature.</strong></p>
+      <p>
+        This is consistent with two known effects: the radio's noise figure worsens with heat, and the
+        crystal oscillator drifts with temperature, which smears long-SF packets (see also the hardware
+        section). Both effects lower the effective SNR that the gateway measures.
+      </p>
+      <p>
+        The effect is real but modest. At the spreading factors used in practice (SF7–SF10), the
+        time on air is short enough that crystal drift is small. The main contribution is the
+        noise-figure effect.
+      </p>
+
+      <h2>Heat at the gateway (UVA campus site)</h2>
+      <p>
+        On the UVA campus, the gateway is mounted outdoors. On warm afternoons the gateway's own
+        hardware warms up. The measured effect is:
+      </p>
+      <ul>
+        <li><strong>RSSI shifts with gateway temperature</strong> — by roughly 0.5 dBm per °C in some periods.</li>
+        <li><strong>SNR does not shift.</strong> The noise floor and signal floor move together, so the ratio is stable.</li>
+      </ul>
+      <p>
+        This means RSSI cannot be trusted as a link-quality indicator at this site. The proposed
+        controller uses SNR only, not RSSI.
+      </p>
+
+      <h2>When does climate help the forecast?</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Condition</th><th>Does climate improve the SNR forecast?</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Link active in the last 12 hours</td>
+              <td>No — recent SNR already carries the temperature effect.</td>
+            </tr>
+            <tr>
+              <td>Link silent for 12+ hours (e.g. overnight gap)</td>
+              <td>Yes — the temperature trend explains part of the SNR change since the last packet.</td>
+            </tr>
+            <tr>
+              <td>Site without measurable heat effect (temperate campus)</td>
+              <td>No — the climate term is turned off for those links.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The practical result: climate enters the controller only as a "heat guard" for links that have
+        been silent long enough that recent history is stale.
+      </p>
+    </section>
+
+    <!-- ── 06 METHOD ── -->
+    <section class="doc-section" id="method">
+      <div class="section-eyebrow">06 — Method</div>
+      <h1>Proposed Method</h1>
+      <p>
+        The controller runs six steps each time an uplink arrives. Each step is described below.
+        The architecture diagram shows how they fit together.
+      </p>
+
+      <div class="img-frame">
+        <img src="images/architecture.png" alt="Controller architecture diagram" />
+        <div class="img-caption">Architecture of the proposed climate-aware ADR controller.</div>
+      </div>
+
+      <h2>Step 1: restore lost packets</h2>
+      <p>
+        The network server usually only records packets that arrive. This controller reads the frame
+        counter on every uplink and counts the gap since the last one. Those missing counts are added
+        to the node's loss history. This is what allows the controller to see the packets it has
+        already lost — the standard rule cannot do this.
+      </p>
+
+      <h2>Step 2: forecast the SNR floor</h2>
+      <p>
+        A LightGBM model predicts the lower end of the SNR distribution over the next hour, using:
+      </p>
+      <ul>
+        <li>Recent SNR statistics (mean, percentiles, trend over the last 2 hours).</li>
+        <li>Hour of day and day of week (captures daily patterns).</li>
+        <li>Temperature (only for links and sites where the heat effect was confirmed).</li>
+      </ul>
+      <p>
+        A "persistence" baseline — "the next hour will look like the last 2 hours" — is blended with
+        the learned model. The blend is chosen by cross-validation.
+      </p>
+
+      <h2>Step 3: calibrate the bound</h2>
+      <p>
+        A per-link calibration offset <strong><em>q</em></strong> is added to the forecast so that
+        the lower bound misses the true SNR floor at most 10% of the time. This is conformal
+        prediction: the offset is set so that the bound's historical miss rate matches the target.
+        The offset is updated after each new hour of data, so it adapts to changes in the link.
+      </p>
+
+      <h2>Step 4: choose the setting</h2>
+      <p>A setting (SF, power) is safe when:</p>
+      <pre><code>bound + (power − 20 dBm)  ≥  SF threshold + 2 dB</code></pre>
+      <p>
+        Among safe settings, the controller picks the one with the lowest energy per packet:
+        supply voltage × current at that power × time on air at that SF.
+      </p>
+
+      <h2>Step 5: apply the rules on each uplink</h2>
+      <ol>
+        <li>Record the SNR at each gateway and note any frame-counter gap.</li>
+        <li>If the node fell back by itself (device backoff), restore the server's safe setting.</li>
+        <li>If the current setting is unsafe now, <strong>upgrade at once</strong> to the cheapest safe one.</li>
+        <li>Otherwise, <strong>downgrade only one step at a time</strong>, and only when:
+          <ul>
+            <li>the cheaper setting would have been safe in <strong>every hour of the last 24 hours</strong>;</li>
+            <li>it has been confirmed in <strong>3 hourly checks</strong> in a row;</li>
+            <li>at least <strong>20 uplinks</strong> have passed since the last upgrade.</li>
+          </ul>
+        </li>
+        <li>Otherwise, send nothing.</li>
+      </ol>
+      <p>
+        If a downgrade is followed by more losses than expected, it is rolled back and that setting
+        is blocked for 7 days.
+      </p>
+      <p>
+        <strong>Why the asymmetry:</strong> a too-lean setting loses packets that cannot be recovered,
+        while a too-robust one only costs some energy. So moving to safety is immediate, and saving
+        energy is slow and careful. Sending nothing when nothing needs to change also saves downlink
+        airtime, which is scarce in LoRaWAN.
+      </p>
+
+      <h2>Step 6: climate as a heat guard</h2>
+      <p>
+        For links silent for 12 hours or more, at sites where heat reaches the node, the bound is
+        lowered by the measured heat slope times the part of the temperature rise that the link's
+        history and the hour of day cannot explain. Everywhere else, climate is not used.
+      </p>
+    </section>
+
+    <!-- ── 07 RESULTS ── -->
+    <section class="doc-section" id="results">
+      <div class="section-eyebrow">07 — Results</div>
+      <h1>Results</h1>
+
+      <h2>How the controller was tested</h2>
+      <p>
+        The controller was tested by replaying five months of real uplinks from the UVA campus
+        (12 January to 11 June 2025): 9 nodes and 380,831 uplinks, of which 4.0% were already
+        lost in the original data.
+      </p>
+      <p>
+        For each uplink, the replay asks: would this packet still have arrived if the node had
+        used the setting this policy chose? SNR changes decibel for decibel with transmit power,
+        and the SNR each SF needs is known, so this can be worked out from the recorded SNR.
+        Every policy learns only from the packets its own settings delivered, as it would in a
+        real network.
+      </p>
+      <p>
+        The forecaster was trained only on data from before the replay. The controller then watched
+        for a week without acting, to calibrate, before taking control.
+      </p>
+
+      <h2>Forecast accuracy</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Split</th><th>Average baseline</th><th>"Last 2 h repeats"</th>
+              <th>Proposed blend</th><th>Bound miss rate (target 10%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>UVA, chronological</td><td>3.25 dB</td><td>2.37 dB</td><td>1.94 dB</td><td>10.0%</td></tr>
+            <tr><td>UVA, heat days</td><td>2.75 dB</td><td>2.00 dB</td><td>1.65 dB</td><td>10.2%</td></tr>
+            <tr><td>UVA, unseen node</td><td>3.31 dB</td><td>1.94 dB</td><td>1.61 dB</td><td>9.8%</td></tr>
+            <tr><td>UVA, unseen gateway</td><td>4.00 dB</td><td>2.00 dB</td><td>1.80 dB</td><td>9.9%</td></tr>
+            <tr><td>Greenhouse, chronological</td><td>2.40 dB</td><td>0.86 dB</td><td>0.81 dB</td><td>10.0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Mean absolute error of the forecast. The blend beat both baselines on every split. The lower bound missed 9.1–12.0% of windows everywhere it was tested.</p>
+
+      <h2>The controller against standard ADR</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Policy</th><th>Delivery ratio</th><th>Packets lost by the setting</th>
+              <th>Energy per delivered packet</th><th>Downlink commands per node per day</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>ADRmax (the standard rule)</td><td>83.00%</td><td>11.65%</td><td>6.21 mJ</td><td>0.11</td></tr>
+            <tr><td>ADR+ (average SNR)</td><td>87.01%</td><td>7.38%</td><td>7.75 mJ</td><td>0.53</td></tr>
+            <tr><td>ADRmin (minimum SNR)</td><td>93.55%</td><td>0.42%</td><td>18.39 mJ</td><td>2.23</td></tr>
+            <tr><td><strong>Proposed</strong></td><td><strong>93.53%</strong></td><td><strong>0.44%</strong></td><td><strong>18.21 mJ</strong></td><td><strong>0.30</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The standard rule is cheap only because it loses about one packet in nine.</p>
+
+      <h2>Fair comparison at equal energy</h2>
+      <p>Each policy spends a different amount of energy, so each was also run across a range of margins and compared at the same energy. At the same energy as the proposed controller:</p>
+      <ul>
+        <li>it lost about <strong>2.6 percentage points fewer</strong> packets than the standard rule;</li>
+        <li>it lost about <strong>0.5 percentage points fewer</strong> packets than ADR+;</li>
+        <li>both differences are statistically significant (95% intervals from resampling whole days).</li>
+      </ul>
+      <p>Against ADRmin, the most cautious standard rule, it reached the same loss and energy with <strong>6 times fewer downgrades</strong> and <strong>7 times fewer downlink commands</strong>.</p>
+
+      <h2>What each part contributes</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Variant</th><th>Packets lost</th><th>Energy</th><th>Bad downgrades</th><th>Bound miss: believed / real</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Full controller</td><td>0.44%</td><td>18.21 mJ</td><td>2.6%</td><td>10.0% / 10.0%</td></tr>
+            <tr><td>Without the learned model</td><td>0.37%</td><td>18.76 mJ</td><td>2.4%</td><td>10.0% / 10.0%</td></tr>
+            <tr><td>Fixed 10 dB margin instead of the bound</td><td>0.48%</td><td>18.02 mJ</td><td>9.1%</td><td>n/a</td></tr>
+            <tr><td>Downgrades as fast as upgrades</td><td>0.60%</td><td>17.33 mJ</td><td>36.1%</td><td>10.0% / 10.1%</td></tr>
+            <tr><td>Ignoring lost packets</td><td>2.09%</td><td>14.30 mJ</td><td>18.0%</td><td>9.8% / 59.7%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>Counting lost packets matters most.</strong> Without it, the controller thinks it is right 90% of the time when it is really wrong 60% of the time.</li>
+        <li><strong>Slow downgrades matter.</strong> Without them there were 1,250 downgrades instead of 266, and over a third of them went wrong.</li>
+        <li><strong>The learned model improves the forecast but not the final decisions.</strong> Per-packet noise (about 5 dB) and the 2.5 dB step between SFs swamp the small gain.</li>
+      </ul>
+
+      <h2>A rejected idea: filtering out collisions</h2>
+      <p>
+        In busy simulated networks, packets lost to collisions looked like a weak link and pushed nodes
+        to SF12. A filter was tried that counted a loss only if it looked like a fade. Tested on the
+        real data, it failed: the controller believed it missed 10% of windows while it really missed
+        45%. The filter was therefore removed. Telling collisions from fades without this bias remains
+        an open problem.
+      </p>
+    </section>
+
+    <!-- ── 08 SIMULATION ── -->
+    <section class="doc-section" id="simulation">
+      <div class="section-eyebrow">08 — Simulation</div>
+      <h1>Simulation (ns-3)</h1>
+      <p>
+        The real-data replay has 9 nodes and no collisions. To test the controller in large, busy
+        networks, the project uses the ns-3 network simulator (release 3.48) with its LoRaWAN module.
+      </p>
+
+      <h2>What was added to ns-3</h2>
+      <ul>
+        <li><strong>The proposed controller</strong>, as an ADR component on the network server.</li>
+        <li><strong>Two published baselines:</strong> CA-ADR (Marini et al., 2021), which assigns data rates over the whole network to reduce collisions, and Cluster-ADR (Gorrela and Choudhury, 2025), which groups nodes by path loss.</li>
+        <li><strong>A realistic fading channel.</strong> Stock ns-3 links stay at a fixed strength apart from collisions. The new model adds per-link variation on three timescales, fitted to the UVA links: a slow drift over days (1.23 dB), a short variation over about 2 hours (1.31 dB), and per-packet noise (5.2 dB).</li>
+        <li><strong>A climate channel</strong>, which replays a real greenhouse temperature trace into the link.</li>
+        <li><strong>A speed fix:</strong> the module stored and rescanned every packet, so long runs slowed down quadratically. A 40-day run dropped from over 10 minutes to 5 seconds with identical output.</li>
+      </ul>
+
+      <h2>Checking the simulator before trusting it</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Check</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Collisions behave like ALOHA</td>
+              <td>With one packet per device, received packets rose from 78 (100 devices) to 159 (400 devices), then fell to 43 (1,600 devices): the expected rise-and-fall shape.</td>
+            </tr>
+            <tr>
+              <td>Standard ADR matches a published study</td>
+              <td>Starting at the slowest data rate, the final data-rate distribution over 1,000 devices matched Finnegan et al. (2020) within 2.4 percentage points, and 99.9% of devices ended where the ADR arithmetic predicts.</td>
+            </tr>
+            <tr>
+              <td>The C++ controller matches the Python reference</td>
+              <td>On the same simulated packets: calibration identical, all 15,199 hourly bounds identical, all 1,066 decisions identical.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>The planned experiment</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Setting</th><th>Values</th></tr></thead>
+          <tbody>
+            <tr><td>Number of devices</td><td>100, 500, 1,000</td></tr>
+            <tr><td>Gateways</td><td>1 and 3</td></tr>
+            <tr><td>Traffic</td><td>one uplink every 10 minutes, and every hour</td></tr>
+            <tr><td>Duration</td><td>8 simulated days, the first 2 excluded</td></tr>
+            <tr><td>Repetitions</td><td>3 random seeds per setting</td></tr>
+            <tr><td>Policies</td><td>no ADR, standard ADR, ADR+, ADRmin, CA-ADR, Cluster-ADR, and the proposed controller across its margin settings</td></tr>
+            <tr><td>Climate</td><td>with and without a real greenhouse heat trace</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>These runs are in progress.</p>
+    </section>
+
+    <!-- ── 09 ROADMAP ── -->
+    <section class="doc-section" id="roadmap">
+      <div class="section-eyebrow">09 — Roadmap</div>
+      <h1>Status and Roadmap</h1>
+
+      <h2>Completed</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Stage</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>Data collection and cleaning</td><td>Four real datasets in one standard format; lost uplinks restored from frame counters</td></tr>
+            <tr><td>Climate measurement</td><td>Heat at the node costs about 1.8 dB per 10 °C; ambient heat shifts gateway RSSI, not SNR</td></tr>
+            <tr><td>SNR-floor forecaster</td><td>Beats both baselines on every split; the bound stays at about 10% misses</td></tr>
+            <tr><td>Controller on real data</td><td>0.44% loss against 11.65% for standard ADR; better than ADRmax and ADR+ at equal energy</td></tr>
+            <tr><td>Ablation study</td><td>Counting lost packets and slow downgrades are the parts that matter</td></tr>
+            <tr><td>Hardware and range test</td><td>Node and gateway built; hardware noise and crystal drift identified</td></tr>
+            <tr><td>ns-3 set-up</td><td>Simulator validated; baselines, fading channel and controller implemented and cross-checked</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>In progress</h2>
+      <ul>
+        <li>Large-scale ns-3 runs: 100 to 1,000 devices, against standard ADR, CA-ADR and Cluster-ADR.</li>
+        <li>ns-3 runs with a real greenhouse heat trace.</li>
+        <li>A fair re-test of a simpler, lower-noise SNR estimator without the rejected collision filter.</li>
+      </ul>
+
+      <h2>Next</h2>
+      <ul>
+        <li>Test the heat guard in the closed-loop replay on the greenhouse sites.</li>
+        <li>Sensitivity of the results to the controller settings (confirmations, lock length, margin, 24-hour window).</li>
+        <li>A longer polyhouse deployment that logs the gateway's own temperature, to confirm where heat acts in the Indian band.</li>
+        <li>Final thesis and a conference paper.</li>
+      </ul>
+
+      <h2>Future work</h2>
+      <ul>
+        <li><strong>Learned step size:</strong> let a small model set the calibration step for each node from its traffic rate, link age and network density.</li>
+        <li><strong>Collisions versus fades:</strong> a test that separates the two without relying only on delivered packets, for example by comparing losses across gateways and across nodes on the same channel.</li>
+        <li><strong>Gateway RSSI correction:</strong> a per-gateway temperature correction so RSSI can be trusted again.</li>
+      </ul>
+    </section>
+
+    <!-- ── 10 GLOSSARY ── -->
+    <section class="doc-section" id="glossary">
+      <div class="section-eyebrow">10 — Reference</div>
+      <h1>Glossary</h1>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>ADR</td><td>Adaptive Data Rate: the mechanism that sets each node's spreading factor and power</td></tr>
+            <tr><td>ADRmax, ADR+, ADRmin</td><td>The standard ADR rule applied to the highest, average or lowest SNR of the last 20 uplinks</td></tr>
+            <tr><td>Backoff (device)</td><td>A node raising its own power or SF after hearing nothing from the server for 64 + 32 uplinks</td></tr>
+            <tr><td>Bound miss rate</td><td>How often the real SNR floor fell below the controller's lower bound; the target is 10%</td></tr>
+            <tr><td>CA-ADR</td><td>Collision-Aware ADR, a published method that assigns data rates network-wide to reduce collisions</td></tr>
+            <tr><td>Censoring</td><td>Losing sight of weak packets because they never arrive; the proposed controller corrects for it</td></tr>
+            <tr><td>Downlink</td><td>A message from the server to a node, such as a LinkADRReq command</td></tr>
+            <tr><td>Frame counter</td><td>A number in every uplink that increases by one; gaps reveal lost packets</td></tr>
+            <tr><td>Gateway</td><td>A receiver that forwards uplinks to the network server</td></tr>
+            <tr><td>IN865</td><td>The LoRaWAN band used in India, 865–867 MHz</td></tr>
+            <tr><td>Induced loss</td><td>Packets that would have arrived at the node's original setting but were lost at the setting a policy chose</td></tr>
+            <tr><td>LightGBM</td><td>A fast gradient-boosted decision-tree library</td></tr>
+            <tr><td>LinkADRReq</td><td>The command the server uses to change a node's SF and power</td></tr>
+            <tr><td>LoRa / LoRaWAN</td><td>The long-range radio modulation, and the network protocol built on it</td></tr>
+            <tr><td>MAE</td><td>Mean absolute error</td></tr>
+            <tr><td>ns-3</td><td>An open-source network simulator</td></tr>
+            <tr><td>PDR</td><td>Packet delivery ratio: the share of sent packets that arrive</td></tr>
+            <tr><td>Persistence</td><td>The forecast "the next hours will look like the last hours"</td></tr>
+            <tr><td>q (offset)</td><td>Each node's calibration offset, which keeps its bound at a 10% miss rate</td></tr>
+            <tr><td>Ridge regression</td><td>Linear regression with a penalty that keeps the coefficients small and stable</td></tr>
+            <tr><td>RSSI</td><td>Received signal strength, in dBm</td></tr>
+            <tr><td>SF</td><td>Spreading factor, SF7 to SF12: higher is more robust but slower</td></tr>
+            <tr><td>SNR</td><td>Signal-to-noise ratio, in dB: decides whether a packet decodes</td></tr>
+            <tr><td>Time on air</td><td>How long one transmission takes</td></tr>
+            <tr><td>TP</td><td>Transmit power, in dBm</td></tr>
+            <tr><td>Uplink</td><td>A message from a node to the network</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 11 REFERENCES ── -->
+    <section class="doc-section" id="references">
+      <div class="section-eyebrow">11 — References</div>
+      <h1>References</h1>
+
+      <h2>Datasets</h2>
+      <ol>
+        <li>F. Nikseresht, V. A. Leal Sobral, J. L. Goodall and B. Campbell, "Dataset: Long-term LoRaWAN communication metadata from an urban deployment," in <em>Proc. ACM BuildSys</em>, 2025, pp. 412–417. Data: University of Virginia Dataverse, doi:10.18130/V3/RFTICK.</li>
+        <li>R. K. Singh, M. H. Rahmani, M. Weyn and R. Berkvens, "Joint communication and sensing: A proof of concept and datasets for greenhouse monitoring using LoRaWAN," <em>Sensors</em>, vol. 22, no. 4, p. 1326, 2022. Data: Zenodo, doi:10.5281/zenodo.5793685.</li>
+        <li>N. M. Obiri and K. Van Laerhoven, "A comprehensive data description for LoRaWAN path loss measurements in an indoor office setting: Effects of environmental factors," <em>IEEE Access</em>, vol. 13, pp. 83148–83170, 2025. Data: Zenodo, doi:10.5281/zenodo.15349731.</li>
+        <li>M. González-Palacio, D. Tobón-Vallejo, L. M. Sepúlveda-Cano, S. Rúa, G. Pau and L. B. Le, "LoRaWAN path loss measurements in an urban scenario including environmental effects," <em>Data</em>, vol. 8, no. 1, p. 4, 2023.</li>
+      </ol>
+
+      <h2>LoRaWAN and ADR</h2>
+      <ol start="5">
+        <li>LoRa Alliance, <em>LoRaWAN L2 1.0.4 Specification (TS001-1.0.4)</em>, 2020.</li>
+        <li>J. Finnegan, R. Farrell and S. Brown, "Analysis and enhancement of the LoRaWAN adaptive data rate scheme," <em>IEEE Internet Things J.</em>, vol. 7, no. 8, pp. 7171–7180, 2020.</li>
+        <li>M. Slabicki, G. Premsankar and M. Di Francesco, "Adaptive configuration of LoRa networks for dense IoT deployments," in <em>Proc. IEEE/IFIP NOMS</em>, 2018, pp. 1–9.</li>
+        <li>S. Li, U. Raza and A. Khan, "How agile is the adaptive data rate mechanism of LoRaWAN?," in <em>Proc. IEEE GLOBECOM</em>, 2018, pp. 206–212.</li>
+        <li>R. Marini, W. Cerroni and C. Buratti, "A novel collision-aware adaptive data rate algorithm for LoRaWAN networks," <em>IEEE Internet Things J.</em>, vol. 8, no. 4, pp. 2670–2680, 2021.</li>
+        <li>A. Gorrela and N. Choudhury, "A clustering-based adaptive data rate technique for industrial LoRaWAN-IoT networks," <em>IEEE Internet Things J.</em>, vol. 12, no. 6, pp. 6506–6518, 2025.</li>
+        <li>M. A. Lodhi, X. Sun, K. Mahmood and A. Lodhi, "EdgeSense: A hybrid TinyML and deep learning framework for SNR-aware adaptive data rate in LoRaWAN," <em>IEEE Trans. Mobile Comput.</em>, vol. 25, no. 10, pp. 17535–17546, 2026.</li>
+        <li>J. Aznar-Poveda et al., "MARLTC: A multi-agent reinforcement learning-based interference-aware transmission control for LoRaWAN IoT devices," <em>IEEE Internet Things J.</em>, vol. 13, no. 15, pp. 35121–35138, 2026.</li>
+      </ol>
+
+      <h2>Climate and LoRa links</h2>
+      <ol start="13">
+        <li>S. Lavdas, N. Bakas, W. El Hajj and Z. Zinonos, "A climate-aware modeling framework for reliable IoT connectivity: Environmental effects on LoRaWAN signal-to-noise ratio," <em>IEEE Internet Things J.</em>, vol. 13, no. 10, pp. 20731–20743, 2026.</li>
+        <li>C. A. Boano, M. Cattani and K. Römer, "Impact of temperature variations on the reliability of LoRa: An experimental evaluation," in <em>Proc. SENSORNETS</em>, 2018, pp. 39–50.</li>
+      </ol>
+
+      <h2>Methods</h2>
+      <ol start="15">
+        <li>G. Ke et al., "LightGBM: A highly efficient gradient boosting decision tree," in <em>Proc. NeurIPS</em>, 2017, pp. 3146–3154.</li>
+        <li>I. Gibbs and E. Candès, "Adaptive conformal inference under distribution shift," in <em>Proc. NeurIPS</em>, vol. 34, 2021, pp. 1660–1672.</li>
+        <li>V. Chernozhukov et al., "Double/debiased machine learning for treatment and structural parameters," <em>Econometrics J.</em>, vol. 21, no. 1, pp. C1–C68, 2018.</li>
+        <li>ns-3 Network Simulator, release 3.48, <a href="https://www.nsnam.org" target="_blank" rel="noopener">nsnam.org</a>.</li>
+      </ol>
+    </section>
+
+  </main><!-- /content -->
+</div><!-- /site-wrapper -->
+
+<script src="main.js"></script>
+</body>
+</html>
